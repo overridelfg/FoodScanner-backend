@@ -22,6 +22,8 @@ app.use('/auth', authRoutes);
 app.use('/restrictions', restrictionsRoutes);
 app.use('/products', productsRoutes);
 
+
+
 const client = mongoose.connect('mongodb+srv://override:minelego2002@cluster0.afiyjyf.mongodb.net/foodscanner_db?retryWrites=true&w=majority')
 .then(result => {
     console.log('connected')
@@ -29,4 +31,3 @@ const client = mongoose.connect('mongodb+srv://override:minelego2002@cluster0.af
 }).catch(err => {
     console.log(err);
 });
-
