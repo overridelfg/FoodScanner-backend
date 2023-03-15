@@ -64,11 +64,16 @@ exports.register = async (req, res, next) => {
                 .json({error: "Пользователь уже существует"})
             }else{
                 user.save();
+                const token = jwt.sign({
+                    email: loadedUser.email,
+                    userId: loadedUser._id.toString()
+                }, 'youdontstealmypassword',
+                 {expiresIn: '1h'})
                 res
                 .status(200)
                 .json(
                     {
-                        token: 'A',
+                        token: token,
                         user: {
                         id: user._id.toString(),
                         email: email,
