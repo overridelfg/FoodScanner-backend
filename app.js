@@ -26,7 +26,7 @@ app.use('/products', productsRoutes);
 
 const client = mongoose.connect('mongodb+srv://override:minelego2002@cluster0.afiyjyf.mongodb.net/foodscanner_db?retryWrites=true&w=majority')
 .then(result => {
-    console.log('connected')
+    console.log('connected');
     app.listen(8080);
 }).catch(err => {
     console.log(err);

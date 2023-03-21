@@ -1,6 +1,7 @@
 const Product = require('../models/product')
 const ProductImage = require('../models/product_image')
 
+
 exports.getProduct = async (req, res, next) => {
     try{
         const barcode = req.params.barcode
@@ -40,6 +41,26 @@ exports.getProducts = async (req, res, next) => {
         console.log(products)
         res.status(200).json(products)
         
+    }catch(err){
+
+    }
+}
+
+exports.getProductSearch = async(req, res, next) => {
+    try{
+        const productName =  req.query.name;
+        const products =  await (await Product.find({Name: new RegExp('^' + productName + '.*', 'i')}).exec()).slice(0, 10);
+        for(let i = 0; i < products.length; i++){
+            const productName = products[i].Name + products[i].Weight
+            const productImage = await ProductImage.findOne(
+                {
+                    title: productName
+                }
+            )
+            products[i]["Jpg"] = productImage.img
+        }
+        console.log(products);
+        res.status(200).json(products);
     }catch(err){
 
     }

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const dietSchema = require('./diet')
-const allergenSchema = require('./allergen')
+const dietSchema = require('./diet');
+const allergenSchema = require('./allergen');
 
 const userSchema = new Schema({
     email:{
@@ -27,4 +27,4 @@ const userSchema = new Schema({
     }
 });
 
-module.exports = mongoose.model('User', userSchema)
+module.exports = mongoose.model('User', userSchema);

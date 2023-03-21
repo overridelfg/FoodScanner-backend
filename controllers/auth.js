@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken')
+const validator = require('validator');
 // const {validationResult} = require('express-validator/check');
 
 exports.login = (req, res, next) => {
@@ -49,6 +50,7 @@ exports.register = async (req, res, next) => {
     const password = req.body.password;
     const diets = req.body.diets;
     const allergens = req.body.allergens;
+    let loadedUser;
     bcrypt.hash(password, 12).then(hasedPassword => {
         const user = User({
             email: email,
@@ -64,6 +66,7 @@ exports.register = async (req, res, next) => {
                 .json({error: "Пользователь уже существует"})
             }else{
                 user.save();
+                loadedUser = user;
                 const token = jwt.sign({
                     email: loadedUser.email,
                     userId: loadedUser._id.toString()

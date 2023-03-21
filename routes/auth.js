@@ -1,6 +1,6 @@
 const express = require('express');
-const User = require('../models/user')
-const authController = require('../controllers/auth')
+const User = require('../models/user');
+const authController = require('../controllers/auth');
 
 const router = express.Router();
 
