@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon app.js"
+    "start": "nodemon ./src/app.js"
   },
   "author": "Rychkov Kirill",
   "license": "ISC",
@@ -22,6 +22,7 @@
     "images-scraper": "^6.4.2",
     "jsonwebtoken": "^9.0.0",
     "mongodb": "^5.0.1",
-    "mongoose": "^6.9.1"
+    "mongoose": "^6.9.1",
+    "uuid": "^9.0.0"
   }
 }

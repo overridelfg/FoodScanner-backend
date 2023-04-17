@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const dietSchema = new Schema({
+const allergenSchema = new Schema({
     id: {
         type: Number,
         required: true
@@ -9,7 +9,11 @@ const dietSchema = new Schema({
     title: {
         type: String,
         required: true
+    },
+    restricted_ingredients: {
+        type: Array,
+        required: true
     }
 });
 
-module.exports = mongoose.model('Diet', dietSchema);
+module.exports = mongoose.model('Allergen', allergenSchema);

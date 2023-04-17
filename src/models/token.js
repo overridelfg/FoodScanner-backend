@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const allergenSchema = new Schema({
-    id: {
-        type: Number,
-        required: true
-    },
-    title: {
+const tokenSchema = new Schema({
+    tokenId: {
         type: String,
         required: true
-    }
+    },
+    userId: {
+        type: String,
+        required: true
+    },
 });
 
-module.exports = mongoose.model('Allergen', allergenSchema);
+module.exports = mongoose.model('Token', tokenSchema);
