@@ -38,7 +38,53 @@ exports.getProducts = async (req, res, next) => {
             )
             products[i]["Jpg"] = productImage.img
         }
-        console.log(products)
+
+
+exports.getRestrictedProducts = async (req, res, next) => {
+    try{
+        const token = req.get('Authorization').split(' ')[1];
+        let currentUser;
+
+        try{
+            const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+            const email = decodeToken.email;
+            await User.findOne({email: email}).then(
+                user => {
+                    currentUser = user;
+                }  
+            )
+        }catch(err){
+            console.log(err)
+        }
+
+        let products;
+        let count = 0;
+        while(count !== 10){
+            const product = await Product.aggregate([
+                { $sample: { size: 1 } }
+            ]);
+
+            
+            productIngredients = product[0].Description.split(',');
+            
+            const isValid = validateProduct(currentUser, productIngredients)
+
+            console.log(isValid)
+            console.log(count)
+            if(isValid){
+                const productName = products[i].Name + products[i].Weight
+                const productImage = await ProductImage.findOne(
+                    {
+                        title: productName
+                    }
+                )
+                products[i]["Jpg"] = productImage.img
+                products[i]["isValid"] = isValid
+                count++;
+                products.push(product)
+            }
+        }
+            
         res.status(200).json(products)
         
     }catch(err){
@@ -59,7 +105,6 @@ exports.getProductSearch = async(req, res, next) => {
             )
             products[i]["Jpg"] = productImage.img
         }
-        console.log(products);
         res.status(200).json(products);
     }catch(err){
 
