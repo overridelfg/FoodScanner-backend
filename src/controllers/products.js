@@ -4,6 +4,7 @@ const ProductImage = require('../models/product_image')
 const jwt = require('jsonwebtoken')
 const authController = require('./auth')
 const { json } = require('body-parser')
+const math = require('mathjs')
 
 exports.getProduct = async (req, res, next) => {
     try{
@@ -57,7 +58,11 @@ exports.getProducts = async (req, res, next) => {
             products[i]["Jpg"] = productImage.img
             productIngredients = products[i].Description.split(',');
             
-            const isValid = validateProduct(currentUser, productIngredients)
+            const answer = isProductValid(currentUser, productIngredients);
+            let isValid = false
+            if(answer.length === 0){
+                isValid = true
+            }
             products[i]["isValid"] = isValid
         }
         res.status(200).json(products)
@@ -75,8 +80,8 @@ exports.getRestrictedProducts = async (req, res, next) => {
         console.log(token)
         try{
             const decodeToken = jwt.verify(token, 'youdontstealmypassword');
-            const email = decodeToken.email;
-            await User.findOne({email: email}).then(
+            const userId = decodeToken.userId;
+            await User.findOne({_id: userId}).then(
                 user => {
                     currentUser = user;
                 }  
@@ -94,65 +99,52 @@ exports.getRestrictedProducts = async (req, res, next) => {
 
             
             productIngredients = product[0].Description.split(',');
-            
-            const isValid = validateProduct(currentUser, productIngredients)
-            console.log(isValid)
-            if(!isValid){
+            const answer = isProductValid(currentUser, productIngredients)
+            if(answer.length !== 0){
                 const productName = product[0].Name + product[0].Weight
                 const productImage = await ProductImage.findOne(
                     {
                         title: productName
                     }
                 )
-                console.log("ok")
+
                 product[0]["Jpg"] = productImage.img
-                product[0]["isValid"] = isValid
-                console.log("ok")
-                count = count - 1;
-                console.log("ok")
+                product[0]["isValid"] = false
+                // count = count - 1;
                 products.push(product[0])
-                console.log("ok")
             }
         }
             
         res.status(200).json(products)
         
     }catch(err){
-
+        console.log(err)
     }
 }
 
-const validateProduct = (user, productIngredients) => {
-    for(let i = 0; i < user.diets.length; i++){
-        const userDietsRestrictedIngredients = user.diets[i].restricted_ingredients;
-        for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
-            const restrictedIngredient = userDietsRestrictedIngredients[j].split(' ');
-            for(let k = 0; k < productIngredients.length; k++){
-                const productIngredient = productIngredients[k].split(' ');
-                let count = 0;
-                for(let m = 0; m < productIngredient.length; m++){
-                    const productIngredientLowerCase = productIngredient[m].toLowerCase()
-                    if(restrictedIngredient.includes(productIngredientLowerCase)){
-                        count++;
-                    }
-                }
-                if(count === restrictedIngredient.length){
-                    return false;
-                }
-            }
-        }
-    }
-    return true
-}
 
 exports.getProductSearch = async(req, res, next) => {
     try{
+        const token = req.get('Authorization').split(' ')[1];
+        let currentUser;
+
+        try{
+            const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+            const userId = decodeToken.userId;
+            await User.findOne({_id: userId}).then(
+                user => {
+                    currentUser = user;
+                }  
+            )
+        }catch(err){
+            console.log(err)
+        }
+
         const productName =  req.query.name;
-        const products =  await (await Product.find({Name: new RegExp('^' + productName + '.*', 'i')}).exec()).slice(0, 10);
-
-    
-
+        const products = (await Product.find({Name: new RegExp('^' + productName + '.*', 'i')}).exec()).slice(0, 10)
+        const productsResponse = []
         for(let i = 0; i < products.length; i++){
+        
             const productName = products[i].Name + products[i].Weight
             const productImage = await ProductImage.findOne(
                 {
@@ -160,8 +152,29 @@ exports.getProductSearch = async(req, res, next) => {
                 }
             )
             products[i]["Jpg"] = productImage.img
+            productIngredients = products[i].Description.split(',');
+            const answer = isProductValid(currentUser, productIngredients);
+            let isValid = false
+            if(answer.length === 0){
+                isValid = true
+            }
+            
+            productsResponse.push({
+                id: products[i]["id"],
+                Name: products[i]["Name"],
+                Barcode: products[i]["Barcode"],
+                Description: products[i]["Description"],
+                Proteins: products[i]["Proteins"],
+                Fats: products[i]["Fats"],
+                Carbohydrates: products[i]["Carbohydrates"],
+                Kcal: products[i]["Kcal"],
+                Kj: products[i]["Kj"],
+                Weight: products[i]["Weight"],
+                Jpg: products[i]["Jpg"],
+                isValid: isValid
+            })
         }
-        res.status(200).json(products);
+        res.status(200).json(productsResponse);
     }catch(err){
 
     }
@@ -182,42 +195,21 @@ exports.getIsProductValid = async(req, res, next) => {
         }catch(err){
 
         }
-        let answer = []
         let decodeToken;
         try{
             decodeToken = jwt.verify(token, 'youdontstealmypassword');
             const userId = decodeToken.userId;
             await User.findOne({_id: userId}).then(
                 user => {
-                        for(let i = 0; i < user.diets.length; i++){
-                            const userDietsRestrictedIngredients = user.diets[i].restricted_ingredients; 
-                            for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
-                                const restrictedIngredient = userDietsRestrictedIngredients[j].split(' ');
-                                for(let k = 0; k < productIngredients.length; k++){
-                                    const productIngredient = productIngredients[k].split(' ');
-                                    let count = 0;
-                                    for(let m = 0; m < productIngredient.length; m++){
-                                        const productIngredientLowerCase = productIngredient[m].toLowerCase()
-                                        if(restrictedIngredient.includes(productIngredientLowerCase)){
-                                            count++;
-                                        }
-                                    }
-                                    if(count === restrictedIngredient.length){
-                                        if(!answer.includes(userDietsRestrictedIngredients[j])){
-                                            answer.push(userDietsRestrictedIngredients[j]);
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        return isProductValid(user, productIngredients)    
                     }
             ).then(result => {
                 let isValid = false;
-                if(answer.length === 0){
+                if(result.length === 0){
                     isValid = true
                 }
                 const response = {
-                    answer : answer,
+                    answer : result,
                     status : isValid
                 }
                 res.status(200).json(response);
@@ -231,6 +223,75 @@ exports.getIsProductValid = async(req, res, next) => {
     }
 }
 
+const isProductValid = (user, productIngredients) => {
+    const restrictedIngredients = new Set();
+    const restrictedIngredientsList = []
+    const productIngredientsSet = new Set();
+    const productIngredientsList = [];
+    const ingredientsSet =  new Set();
+    const answer = [];
+    for(let i = 0; i < user.diets.length; i++){
+        const userDietsRestrictedIngredients = user.diets[i].restricted_ingredients; 
+        for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
+            restrictedIngredients.add(userDietsRestrictedIngredients[j]);
+            restrictedIngredientsList.push(userDietsRestrictedIngredients[j].split(' '));
+            const userDietsRestrictedIngredient = userDietsRestrictedIngredients[j].split(' ');
+            for(let k = 0; k < userDietsRestrictedIngredient.length; k++){
+                ingredientsSet.add(userDietsRestrictedIngredient[k].toLowerCase());
+            }
+        }
+    }
+    for(let i = 0; i < productIngredients.length; i++){
+        productIngredientsSet.add(productIngredients[i].toLowerCase().trim());
+        productIngredientsList.push(productIngredients[i].toLowerCase().trim().split(' '));
+        const productIngredient = productIngredients[i].split(' ');
+        for(let j = 0; j < productIngredient.length; j++){
+            if(productIngredient[j] != ''){
+                ingredientsSet.add(productIngredient[j].toLowerCase());
+            }
+        }
+    }
+
+    let arrA = []
+    restrictedIngredients.forEach(restrictedIngredient =>{
+        const firstRowIngredient = [];
+        ingredientsSet.forEach(ingredient=> {
+            if(restrictedIngredient.split(' ').includes(ingredient)){
+                firstRowIngredient.push(1);
+            }else{
+                firstRowIngredient.push(0);
+            }
+        })
+        arrA.push(firstRowIngredient);
+    })
+
+
+    let arrB = []
+    productIngredientsSet.forEach(productIngredient =>{
+        const firstRowIngredient = [];
+        ingredientsSet.forEach(ingredient=> {
+            if(productIngredient.split(' ').includes(ingredient)){
+                
+                firstRowIngredient.push(1);
+            }else{
+                firstRowIngredient.push(0);
+            }
+        })
+        arrB.push(firstRowIngredient);
+    });
+     arrA = math.transpose(arrA);
+     const arrResult = math.multiply(arrB, arrA);
+     for(let i = 0; i < productIngredientsSet.size; i++){
+        for(let j = 0; j < restrictedIngredients.size; j++){
+            const min = math.min(restrictedIngredientsList[j].length, productIngredientsList[i].length);
+            arrResult[i][j] /= min;
+            if(arrResult[i][j] > 0.7){
+                answer.push(restrictedIngredientsList[j].join(' '));
+            }
+        }
+     }
+     return answer;
+}
 
 exports.getProductsParse = async(req, res, next) => {
     const products = await Product.find()

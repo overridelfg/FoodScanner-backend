@@ -10,7 +10,7 @@ module.exports = {
                 },
                 refresh: {
                     type: 'refresh',
-                    expiresIn: '3m',
+                    expiresIn: '24h',
                 }
             }
         },

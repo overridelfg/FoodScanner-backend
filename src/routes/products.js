@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/details/:barcode', productsController.getProduct);
 
-router.get('/list', productsController.getProducts);
+router.get('/list', productsController.getRestrictedProducts);
 
 router.get('/list/restricted', productsController.getRestrictedProducts);
 

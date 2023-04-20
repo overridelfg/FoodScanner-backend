@@ -20,7 +20,10 @@
     "google-img-scrap": "^1.1.0",
     "google-parser": "^2.1.4",
     "images-scraper": "^6.4.2",
+    "js-sorted-set": "^0.7.0",
     "jsonwebtoken": "^9.0.0",
+    "mathjs": "^11.8.0",
+    "matrix-nodejs": "^1.0.3",
     "mongodb": "^5.0.1",
     "mongoose": "^6.9.1",
     "uuid": "^9.0.0"
