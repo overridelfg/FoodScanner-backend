@@ -1,4 +1,6 @@
 const User = require('../models/user');
+const Diet = require('../models/diet');
+const Allergen = require('../models/allergen');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken')
 const authHelper = require('../helpers/authHelper');
@@ -44,9 +46,7 @@ exports.login = (req, res, next) => {
                 user: {
                     id: loadedUser._id.toString(),
                     email: loadedUser.email,
-                    name: loadedUser.name,
-                    diets: loadedUser.diets,
-                    allergens: loadedUser.allergens
+                    name: loadedUser.name
                 }
             })
     }).catch(err => {
@@ -61,13 +61,31 @@ exports.register = async (req, res, next) => {
     const diets = req.body.diets;
     const allergens = req.body.allergens;
     let loadedUser;
+
+    let currentDiets = [];
+    for(let i = 0; i < diets.length; i++){
+        Diet.findOne({id: diets[i].id}).then(
+            diet => {
+                currentDiets.push(diet)
+            }
+        )
+    }
+
+    let currentAllergens = [];
+    for(let i = 0; i < allergens.length; i++){
+        Allergen.findOne({id: allergens[i].id}).then(
+            allergen => {
+                currentAllergens.push(allergen)
+            }
+        )
+    }
     bcrypt.hash(password, 12).then(hasedPassword => {
         const user = User({
             email: email,
             password: hasedPassword,
             name: name,
-            diets: diets,
-            allergens: allergens
+            diets: currentDiets,
+            allergens: currentAllergens
         });
         User.findOne({email: email}).then(userDoc => {
             if(userDoc){
@@ -84,9 +102,7 @@ exports.register = async (req, res, next) => {
                     user: {
                         id: loadedUser._id.toString(),
                         email: loadedUser.email,
-                        name: loadedUser.name,
-                        diets: loadedUser.diets,
-                        allergens: loadedUser.allergens
+                        name: loadedUser.name
                     }
                 });
             }

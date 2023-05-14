@@ -8,4 +8,6 @@ router.get('/diets', restrictionsController.getDiets);
 
 router.get('/allergens', restrictionsController.getAllergens);
 
+
+
 module.exports = router;

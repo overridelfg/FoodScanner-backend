@@ -5,9 +5,29 @@ const jwt = require('jsonwebtoken')
 const authController = require('./auth')
 const { json } = require('body-parser')
 const math = require('mathjs')
+var stringSimilarity = require("string-similarity");
+var _ = require('lodash');
+const sklearn = import('sklearn');
+
 
 exports.getProduct = async (req, res, next) => {
     try{
+        const token = req.get('Authorization').split(' ')[1];
+
+        let currentUser;
+
+        try{
+            const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+            const userId = decodeToken.userId;
+            await User.findOne({_id: userId}).then(
+                user => {
+                    currentUser = user;
+                }  
+            )
+        }catch(err){
+            console.log(err)
+        }
+
         const barcode = req.params.barcode
         var product = await Product.findOne({
             Barcode : barcode});
@@ -20,8 +40,34 @@ exports.getProduct = async (req, res, next) => {
 
         var newProduct = product
         newProduct["Jpg"] = productImage.img
+        
+        let isFavorite = false;
+        currentUser.favorites.find((el) => {
+            if(el.id.toString() === newProduct.id.toString()){
+                console.log(isFavorite)
+                isFavorite = true;
+                return;
+            }
+        })
 
-        res.status(200).json(product)
+        newProduct["isFavorite"] = isFavorite
+
+        let alreadyAdded = false;
+        currentUser.barcode_history.find((el) => {
+            if(el.id.toString() === newProduct.id.toString()){
+                alreadyAdded = true;
+                return;
+            }
+        })
+
+        if(!alreadyAdded){
+            await User.findByIdAndUpdate(currentUser._id,
+                {
+                    $push: {barcode_history: newProduct}
+                } )
+        }
+        console.log(product)
+        res.status(200).json(newProduct)
     }catch(err){
 
     }
@@ -31,7 +77,6 @@ exports.getProducts = async (req, res, next) => {
     try{
         const token = req.get('Authorization').split(' ')[1];
         let currentUser;
-
         try{
             const decodeToken = jwt.verify(token, 'youdontstealmypassword');
             const userId = decodeToken.userId;
@@ -56,14 +101,22 @@ exports.getProducts = async (req, res, next) => {
                 }
             )
             products[i]["Jpg"] = productImage.img
-            productIngredients = products[i].Description.split(',');
+            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
             
-            const answer = isProductValid(currentUser, productIngredients);
+            const answer =  validateProduct(currentUser, productIngredients);;
             let isValid = false
-            if(answer.length === 0){
+            if(answer.diets.length === 0){
                 isValid = true
             }
+            let isFavorite = false;
+            currentUser.favorites.find((el) => {
+                if(el.id.toString() === products[i].id.toString()){
+                    isFavorite = true;
+                    return;
+                }
+            })
             products[i]["isValid"] = isValid
+            products[i]["isFavorite"] = isFavorite
         }
         res.status(200).json(products)
         
@@ -98,7 +151,7 @@ exports.getRestrictedProducts = async (req, res, next) => {
             ]);
 
             
-            productIngredients = product[0].Description.split(',');
+            productIngredients = product[0].Description.replaceAll(';', ',').split(',');
             const answer = isProductValid(currentUser, productIngredients)
             if(answer.length !== 0){
                 const productName = product[0].Name + product[0].Weight
@@ -110,7 +163,7 @@ exports.getRestrictedProducts = async (req, res, next) => {
 
                 product[0]["Jpg"] = productImage.img
                 product[0]["isValid"] = false
-                // count = count - 1;
+                count = count - 1;
                 products.push(product[0])
             }
         }
@@ -152,12 +205,21 @@ exports.getProductSearch = async(req, res, next) => {
                 }
             )
             products[i]["Jpg"] = productImage.img
-            productIngredients = products[i].Description.split(',');
-            const answer = isProductValid(currentUser, productIngredients);
+            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            const answer = validateProduct(currentUser, productIngredients);
             let isValid = false
-            if(answer.length === 0){
+            if(answer.diets.length === 0){
                 isValid = true
             }
+
+            let isFavorite = false;
+            currentUser.favorites.find((el) => {
+                if(el.id.toString() === products[i].id.toString()){
+                    isFavorite = true;
+                    return;
+                }
+            })
+
             
             productsResponse.push({
                 id: products[i]["id"],
@@ -171,7 +233,8 @@ exports.getProductSearch = async(req, res, next) => {
                 Kj: products[i]["Kj"],
                 Weight: products[i]["Weight"],
                 Jpg: products[i]["Jpg"],
-                isValid: isValid
+                isValid: isValid,
+                isFavorite: isFavorite
             })
         }
         res.status(200).json(productsResponse);
@@ -189,7 +252,7 @@ exports.getIsProductValid = async(req, res, next) => {
             await Product.findOne({id: product_id}).then(
                 productDetails => {
                     product = productDetails.Description;
-                    productIngredients = product.split(',');
+                    productIngredients = product.replaceAll(';', ',').split(',');
                 }
             )
         }catch(err){
@@ -201,15 +264,17 @@ exports.getIsProductValid = async(req, res, next) => {
             const userId = decodeToken.userId;
             await User.findOne({_id: userId}).then(
                 user => {
-                        return isProductValid(user, productIngredients)    
+                        return validateProduct(user, productIngredients)    
                     }
             ).then(result => {
                 let isValid = false;
-                if(result.length === 0){
+                
+                if(result.diets.length === 0 && result.allergens.length === 0){
                     isValid = true
                 }
                 const response = {
-                    answer : result,
+                    answerDiets : result.diets,
+                    answerAllergens : result.allergens,
                     status : isValid
                 }
                 res.status(200).json(response);
@@ -223,15 +288,32 @@ exports.getIsProductValid = async(req, res, next) => {
     }
 }
 
-const isProductValid = (user, productIngredients) => {
+const validateProduct = (user, productIngredients) => {
+    let diets;
+    let allergens;
+    if(user.diets.length === 0){
+        diets = [];
+    }else{
+        diets = isProductValid(user.diets, productIngredients);
+    }
+    if(user.allergens.length === 0){
+        allergens = [];
+    }else{
+        allergens = isProductValid(user.allergens, productIngredients);
+    }
+    
+    return {diets: diets, allergens: allergens};
+}
+
+const isProductValid = (restrictions, productIngredients) => {
     const restrictedIngredients = new Set();
     const restrictedIngredientsList = []
     const productIngredientsSet = new Set();
     const productIngredientsList = [];
     const ingredientsSet =  new Set();
-    const answer = [];
-    for(let i = 0; i < user.diets.length; i++){
-        const userDietsRestrictedIngredients = user.diets[i].restricted_ingredients; 
+
+    for(let i = 0; i < restrictions.length; i++){
+        const userDietsRestrictedIngredients = restrictions[i].restricted_ingredients; 
         for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
             restrictedIngredients.add(userDietsRestrictedIngredients[j]);
             restrictedIngredientsList.push(userDietsRestrictedIngredients[j].split(' '));
@@ -242,22 +324,24 @@ const isProductValid = (user, productIngredients) => {
         }
     }
     for(let i = 0; i < productIngredients.length; i++){
-        productIngredientsSet.add(productIngredients[i].toLowerCase().trim());
-        productIngredientsList.push(productIngredients[i].toLowerCase().trim().split(' '));
-        const productIngredient = productIngredients[i].split(' ');
+        const validatedProductIngredient = productIngredients[i].replaceAll(")","").replaceAll("(", "").replaceAll("-", "").replaceAll(":", "").replaceAll(";", "").replaceAll("[", "").replaceAll("]", "").replaceAll("—", "")
+        productIngredientsSet.add(validatedProductIngredient.toLowerCase().trim());
+        productIngredientsList.push(validatedProductIngredient.toLowerCase().trim().split(' '));
+        const productIngredient = validatedProductIngredient.split(' ');
         for(let j = 0; j < productIngredient.length; j++){
             if(productIngredient[j] != ''){
                 ingredientsSet.add(productIngredient[j].toLowerCase());
             }
         }
     }
-
     let arrA = []
     restrictedIngredients.forEach(restrictedIngredient =>{
         const firstRowIngredient = [];
         ingredientsSet.forEach(ingredient=> {
             if(restrictedIngredient.split(' ').includes(ingredient)){
                 firstRowIngredient.push(1);
+                console.log(ingredient)
+                console.log(restrictedIngredient.split(' '))
             }else{
                 firstRowIngredient.push(0);
             }
@@ -281,16 +365,185 @@ const isProductValid = (user, productIngredients) => {
     });
      arrA = math.transpose(arrA);
      const arrResult = math.multiply(arrB, arrA);
+     const answer = [];
      for(let i = 0; i < productIngredientsSet.size; i++){
         for(let j = 0; j < restrictedIngredients.size; j++){
-            const min = math.min(restrictedIngredientsList[j].length, productIngredientsList[i].length);
-            arrResult[i][j] /= min;
-            if(arrResult[i][j] > 0.7){
-                answer.push(restrictedIngredientsList[j].join(' '));
+            if(arrResult[i][j] >= restrictedIngredientsList[j].length){
+                console.log(restrictedIngredientsList[j])
+                for(let k = 0; k < restrictions.length; k++){
+                    if(restrictions[k].restricted_ingredients.includes(restrictedIngredientsList[j].join(' '))){
+                        if (!answer[restrictions[k].title]) answer[restrictions[k].title] = []
+                        answer[restrictions[k].title].push(restrictedIngredientsList[j].join(' '));
+                    }
+                }
+                
             }
         }
      }
-     return answer;
+     let productsRestrictionsData = []
+     
+     for(var key in answer){
+        productsRestrictionsData.push(key + ":" + answer[key])
+     }
+     return productsRestrictionsData;
+}
+
+exports.addToFavorite = async(req, res, next) => {
+    const token = req.get('Authorization').split(' ')[1];
+    const productId = req.query.productId;
+    let currentUser;
+    let currentProduct;
+    try{
+        await Product.findOne({id: productId}).then(
+            product => {
+                currentProduct = product;
+            }  
+        )
+    }catch(err){
+        console.log(err)
+    }
+    try{
+        const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+        const userId = decodeToken.userId;
+        currentUser = await User.findById(userId);
+        let alreadyAdded = false;
+        currentUser.favorites.find((el) => {
+            if(el.id.toString() === productId.toString()){
+                alreadyAdded = true;
+                return;
+            }
+        })
+        if(alreadyAdded){
+            await User.findByIdAndUpdate(userId,
+                {
+                    $pull: {favorites: currentProduct}
+                } )
+                res.status(200).json({message: "Успешно удалили!"})
+                return;
+        }else{
+            await User.findByIdAndUpdate(userId,
+                {
+                    $push: {favorites: currentProduct}
+                } )
+                res.status(200).json({message: "Успешно добавили!"})
+                return;
+        }
+    }catch(err){
+        console.log(err)
+    }
+}
+
+exports.getFavorites =  async(req, res, next) => {
+    const token = req.get('Authorization').split(' ')[1];
+        let currentUser;
+
+        try{
+            const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+            const userId = decodeToken.userId;
+            await User.findOne({_id: userId}).then(
+                user => {
+                    currentUser = user;
+                }  
+            )
+        }catch(err){
+            console.log(err)
+        }
+
+        const products = currentUser.favorites;
+        productsResponse = [];
+        for(let i = 0; i < products.length; i++){
+            const productName = products[i].Name + products[i].Weight
+            const productImage = await ProductImage.findOne(
+                {
+                    title: productName
+                }
+            )
+            products[i]["Jpg"] = productImage.img
+            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            
+            const answer = validateProduct(currentUser, productIngredients);
+            let isValid = false;
+            if(answer.diets.length === 0){
+                isValid = true;
+            }
+
+            let isFavorite = false;
+            currentUser.favorites.find((el) => {
+                if(el.id.toString() === products[i].id.toString()){
+                    isFavorite = true;
+                    return;
+                }
+            })
+            productsResponse.push({
+                id: products[i]["id"],
+                Name: products[i]["Name"],
+                Barcode: products[i]["Barcode"],
+                Description: products[i]["Description"],
+                Proteins: products[i]["Proteins"],
+                Fats: products[i]["Fats"],
+                Carbohydrates: products[i]["Carbohydrates"],
+                Kcal: products[i]["Kcal"],
+                Kj: products[i]["Kj"],
+                Weight: products[i]["Weight"],
+                Jpg: products[i]["Jpg"],
+                isValid: isValid,
+                isFavorite: isFavorite
+            })
+        }
+        res.status(200).json(productsResponse)
+}
+
+exports.getBarcodeHistory =  async(req, res, next) => {
+    const token = req.get('Authorization').split(' ')[1];
+        let currentUser;
+
+        try{
+            const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+            const userId = decodeToken.userId;
+            await User.findOne({_id: userId}).then(
+                user => {
+                    currentUser = user;
+                }  
+            )
+        }catch(err){
+            console.log(err)
+        }
+
+        const products = currentUser.barcode_history;
+        productsResponse = [];
+        for(let i = 0; i < products.length; i++){
+            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            
+            const answer =  validateProduct(currentUser, productIngredients);
+            let isValid = false;
+            if(answer.diets.length === 0 && answer.allergens.length === 0 ){
+                isValid = true;
+            }
+        
+            let isFavorite = false;
+            currentUser.favorites.find((el) => {
+                if(el.id.toString() === products[i].id.toString()){
+                    isFavorite = true;
+                    return;
+                }
+            })
+            productsResponse.push({
+                id: products[i]["id"],
+                Name: products[i]["Name"],
+                Barcode: products[i]["Barcode"],
+                Description: products[i]["Description"],
+                Proteins: products[i]["Proteins"],
+                Fats: products[i]["Fats"],
+                Carbohydrates: products[i]["Carbohydrates"],
+                Kcal: products[i]["Kcal"],
+                Kj: products[i]["Kj"],
+                Weight: products[i]["Weight"],
+                Jpg: products[i]["Jpg"],
+                isValid: isValid,
+                isFavorite: isFavorite
+            })
+        }
+        res.status(200).json(productsResponse)
 }
 
 exports.getProductsParse = async(req, res, next) => {

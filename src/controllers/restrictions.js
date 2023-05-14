@@ -18,3 +18,4 @@ exports.getAllergens = async (req, res, next) => {
 
     }
 };
+

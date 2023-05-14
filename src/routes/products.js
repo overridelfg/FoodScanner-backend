@@ -6,9 +6,15 @@ const router = express.Router();
 
 router.get('/details/:barcode', productsController.getProduct);
 
-router.get('/list', productsController.getRestrictedProducts);
+router.get('/list', productsController.getProducts);
 
 router.get('/list/restricted', productsController.getRestrictedProducts);
+
+router.put('/addToFavorite', productsController.addToFavorite);
+
+router.get('/favorites', productsController.getFavorites);
+
+router.get('/barcodeScanHistory', productsController.getBarcodeHistory);
 
 router.get('/parse', productsController.getProductsParse);
 

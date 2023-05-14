@@ -1,12 +1,12 @@
 module.exports = {
     server: {
-        port: 8080,
+        port: 80,
         jwt: {
             secret: "youdontstealmypassword",
             tokens:{
                 access: {
                     type: 'access',
-                    expiresIn: '2m',
+                    expiresIn: '1h',
                 },
                 refresh: {
                     type: 'refresh',

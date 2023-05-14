@@ -7,6 +7,7 @@ const config = require('./config')
 const restrictionsRoutes = require('./routes/restrictions');
 const productsRoutes = require('./routes/products');
 const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/user');
 const authMiddleware = require('./middleware/auth')
 
 const app = express();
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 
 app.use('/auth', authRoutes);
 app.use('/restrictions', restrictionsRoutes);
+app.use('/user', authMiddleware, userRoutes);
 app.use('/products', authMiddleware, productsRoutes);
 
 const client = mongoose.connect(config.database.mongoUri)

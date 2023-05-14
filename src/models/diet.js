@@ -10,6 +10,10 @@ const dietSchema = new Schema({
         type: String,
         required: true
     },
+    description:{
+        type: String,
+        required: true
+    },
     restricted_ingredients: {
         type: Array,
         required: true
