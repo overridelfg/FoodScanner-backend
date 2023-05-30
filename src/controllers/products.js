@@ -31,6 +31,10 @@ exports.getProduct = async (req, res, next) => {
         const barcode = req.params.barcode
         var product = await Product.findOne({
             Barcode : barcode});
+        if(product === null){
+            res.status(405).json({message: "Not Found"});
+            return;
+        }
         const productName = product.Name + product.Weight
         const productImage = await ProductImage.findOne(
             {
@@ -44,7 +48,7 @@ exports.getProduct = async (req, res, next) => {
         let isFavorite = false;
         currentUser.favorites.find((el) => {
             if(el.id.toString() === newProduct.id.toString()){
-                console.log(isFavorite)
+
                 isFavorite = true;
                 return;
             }
@@ -66,7 +70,6 @@ exports.getProduct = async (req, res, next) => {
                     $push: {barcode_history: newProduct}
                 } )
         }
-        console.log(product)
         res.status(200).json(newProduct)
     }catch(err){
 
@@ -105,7 +108,7 @@ exports.getProducts = async (req, res, next) => {
             
             const answer =  validateProduct(currentUser, productIngredients);;
             let isValid = false
-            if(answer.diets.length === 0){
+            if(answer.diets.length === 0 && answer.allergens.length === 0){
                 isValid = true
             }
             let isFavorite = false;
@@ -125,12 +128,10 @@ exports.getProducts = async (req, res, next) => {
     }
 }
 
-
-exports.getRestrictedProducts = async (req, res, next) => {
+exports.getValidProducts = async (req, res) => {
     try{
         const token = req.get('Authorization').split(' ')[1];
         let currentUser;
-        console.log(token)
         try{
             const decodeToken = jwt.verify(token, 'youdontstealmypassword');
             const userId = decodeToken.userId;
@@ -142,7 +143,70 @@ exports.getRestrictedProducts = async (req, res, next) => {
         }catch(err){
             console.log(err)
         }
-        console.log(currentUser)
+
+        let products = [];
+        let count = 10;
+        while(count !== 0){
+            const product = await Product.aggregate([
+                { $sample: { size: 1 } }
+            ]);
+
+            
+            productIngredients = product[0].Description.replaceAll(';', ',').split(',');
+                const productName = product[0].Name + product[0].Weight
+                const productImage = await ProductImage.findOne(
+                    {
+                        title: productName
+                    }
+                )
+
+                product[0]["Jpg"] = productImage.img
+                
+                const answer =  validateProduct(currentUser, productIngredients);
+                console.log(answer)
+                let isValid = false
+                if(answer.diets.length === 0 && answer.allergens.length === 0){
+                    isValid = true
+                }
+                if(isValid){
+                
+                    let isFavorite = false;
+                    currentUser.favorites.find((el) => {
+                        if(el.id.toString() === product[0].id.toString()){
+                            isFavorite = true;
+                            return;
+                        }
+                    })
+    
+                    product[0]["isValid"] = true
+                    product[0]["isFavorite"] = isFavorite
+                    count = count - 1;
+                    products.push(product[0])
+                }
+        }
+        res.status(200).json(products)
+              
+    }catch(err){
+
+    }
+}
+
+
+exports.getRestrictedProducts = async (req, res, next) => {
+    try{
+        const token = req.get('Authorization').split(' ')[1];
+        let currentUser;
+        try{
+            const decodeToken = jwt.verify(token, 'youdontstealmypassword');
+            const userId = decodeToken.userId;
+            await User.findOne({_id: userId}).then(
+                user => {
+                    currentUser = user;
+                }  
+            )
+        }catch(err){
+            console.log(err)
+        }
         let products = [];
         let count = 10;
         while(count !== 0){
@@ -179,6 +243,10 @@ exports.getRestrictedProducts = async (req, res, next) => {
 exports.getProductSearch = async(req, res, next) => {
     try{
         const token = req.get('Authorization').split(' ')[1];
+        console.log(token)
+        const page = req.query.page;
+        const startIndex = (page - 1) * 10
+        const endIndex = page * 10
         let currentUser;
 
         try{
@@ -194,8 +262,9 @@ exports.getProductSearch = async(req, res, next) => {
         }
 
         const productName =  req.query.name;
-        const products = (await Product.find({Name: new RegExp('^' + productName + '.*', 'i')}).exec()).slice(0, 10)
+        const products = (await Product.find({Name: new RegExp('^' + productName + '.*', 'i')}).exec()).slice(startIndex, endIndex)
         const productsResponse = []
+        console.log(products)
         for(let i = 0; i < products.length; i++){
         
             const productName = products[i].Name + products[i].Weight
@@ -208,7 +277,7 @@ exports.getProductSearch = async(req, res, next) => {
             productIngredients = products[i].Description.replaceAll(';', ',').split(',');
             const answer = validateProduct(currentUser, productIngredients);
             let isValid = false
-            if(answer.diets.length === 0){
+            if(answer.diets.length === 0 && answer.allergens.length === 0){
                 isValid = true
             }
 
@@ -312,6 +381,7 @@ const isProductValid = (restrictions, productIngredients) => {
     const productIngredientsList = [];
     const ingredientsSet =  new Set();
 
+
     for(let i = 0; i < restrictions.length; i++){
         const userDietsRestrictedIngredients = restrictions[i].restricted_ingredients; 
         for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
@@ -340,8 +410,6 @@ const isProductValid = (restrictions, productIngredients) => {
         ingredientsSet.forEach(ingredient=> {
             if(restrictedIngredient.split(' ').includes(ingredient)){
                 firstRowIngredient.push(1);
-                console.log(ingredient)
-                console.log(restrictedIngredient.split(' '))
             }else{
                 firstRowIngredient.push(0);
             }
@@ -369,7 +437,7 @@ const isProductValid = (restrictions, productIngredients) => {
      for(let i = 0; i < productIngredientsSet.size; i++){
         for(let j = 0; j < restrictedIngredients.size; j++){
             if(arrResult[i][j] >= restrictedIngredientsList[j].length){
-                console.log(restrictedIngredientsList[j])
+
                 for(let k = 0; k < restrictions.length; k++){
                     if(restrictions[k].restricted_ingredients.includes(restrictedIngredientsList[j].join(' '))){
                         if (!answer[restrictions[k].title]) answer[restrictions[k].title] = []
@@ -463,7 +531,7 @@ exports.getFavorites =  async(req, res, next) => {
             
             const answer = validateProduct(currentUser, productIngredients);
             let isValid = false;
-            if(answer.diets.length === 0){
+            if(answer.diets.length === 0 && answer.allergens.length === 0){
                 isValid = true;
             }
 
@@ -589,3 +657,12 @@ exports.getProductsParse = async(req, res, next) => {
         console.log(err);
     }
 } 
+
+exports.postNonexistentProductFeedback = async(req, res) => {
+    const token = req.get('Authorization').split(' ')[1];
+    const firstImage = req.body;
+    const secondImage = req.body;
+    let currentUser;
+
+    res.status(200).json({message: "Спасибо, что помогаете нам развивать приложение! Данные успешно отправились"})
+}
