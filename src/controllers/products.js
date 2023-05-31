@@ -358,23 +358,50 @@ exports.getIsProductValid = async(req, res, next) => {
 }
 
 const validateProduct = (user, productIngredients) => {
-    let diets;
-    let allergens;
+    let diets = [];
+    let allergens = [];
     if(user.diets.length === 0){
         diets = [];
     }else{
-        diets = isProductValid(user.diets, productIngredients);
+        for(let i = 0; i < user.diets.length; i++){
+    
+            const answer = isProductValid(user.diets[i], productIngredients);
+
+                let productsRestrictionsDataAnswer = []
+                for(var key in answer){
+                    productsRestrictionsDataAnswer.push(key + ":" + answer[key])
+                }
+                console.log(productsRestrictionsDataAnswer)
+                if(productsRestrictionsDataAnswer[0] !== undefined){
+                    diets.push(productsRestrictionsDataAnswer[0])
+                }
+                
+        }
+        // diets = isProductValid(user.diets, productIngredients);
     }
     if(user.allergens.length === 0){
         allergens = [];
     }else{
-        allergens = isProductValid(user.allergens, productIngredients);
+        for(let i = 0; i < user.allergens.length; i++){
+    
+            const answer = isProductValid(user.allergens[i], productIngredients);
+
+                let productsRestrictionsDataAnswer = []
+                for(var key in answer){
+                    productsRestrictionsDataAnswer.push(key + ":" + answer[key])
+                }
+                console.log(productsRestrictionsDataAnswer)
+                if(productsRestrictionsDataAnswer[0] !== undefined){
+                    allergens.push(productsRestrictionsDataAnswer[0])
+                }
+                
+        }
     }
     
     return {diets: diets, allergens: allergens};
 }
 
-const isProductValid = (restrictions, productIngredients) => {
+const isProductValid = (restriction, productIngredients) => {
     const restrictedIngredients = new Set();
     const restrictedIngredientsList = []
     const productIngredientsSet = new Set();
@@ -382,17 +409,17 @@ const isProductValid = (restrictions, productIngredients) => {
     const ingredientsSet =  new Set();
 
 
-    for(let i = 0; i < restrictions.length; i++){
-        const userDietsRestrictedIngredients = restrictions[i].restricted_ingredients; 
-        for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
-            restrictedIngredients.add(userDietsRestrictedIngredients[j]);
-            restrictedIngredientsList.push(userDietsRestrictedIngredients[j].split(' '));
-            const userDietsRestrictedIngredient = userDietsRestrictedIngredients[j].split(' ');
-            for(let k = 0; k < userDietsRestrictedIngredient.length; k++){
-                ingredientsSet.add(userDietsRestrictedIngredient[k].toLowerCase());
-            }
+    const userDietsRestrictedIngredients = restriction.restricted_ingredients; 
+    for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
+        restrictedIngredients.add(userDietsRestrictedIngredients[j]);
+        restrictedIngredientsList.push(userDietsRestrictedIngredients[j].split(' '));
+        const userDietsRestrictedIngredient = userDietsRestrictedIngredients[j].split(' ');
+        for(let k = 0; k < userDietsRestrictedIngredient.length; k++){
+            ingredientsSet.add(userDietsRestrictedIngredient[k].toLowerCase());
         }
     }
+
+
     for(let i = 0; i < productIngredients.length; i++){
         const validatedProductIngredient = productIngredients[i].replaceAll(")","").replaceAll("(", "").replaceAll("-", "").replaceAll(":", "").replaceAll(";", "").replaceAll("[", "").replaceAll("]", "").replaceAll("—", "")
         productIngredientsSet.add(validatedProductIngredient.toLowerCase().trim());
@@ -404,6 +431,8 @@ const isProductValid = (restrictions, productIngredients) => {
             }
         }
     }
+
+
     let arrA = []
     restrictedIngredients.forEach(restrictedIngredient =>{
         const firstRowIngredient = [];
@@ -437,23 +466,19 @@ const isProductValid = (restrictions, productIngredients) => {
      for(let i = 0; i < productIngredientsSet.size; i++){
         for(let j = 0; j < restrictedIngredients.size; j++){
             if(arrResult[i][j] >= restrictedIngredientsList[j].length){
-
-                for(let k = 0; k < restrictions.length; k++){
-                    if(restrictions[k].restricted_ingredients.includes(restrictedIngredientsList[j].join(' '))){
-                        if (!answer[restrictions[k].title]) answer[restrictions[k].title] = []
-                        answer[restrictions[k].title].push(restrictedIngredientsList[j].join(' '));
-                    }
+                if(restriction.restricted_ingredients.includes(restrictedIngredientsList[j].join(' '))){
+                    if (!answer[restriction.title]) answer[restriction.title] = []
+                    answer[restriction.title].push(restrictedIngredientsList[j].join(' '));
                 }
-                
             }
         }
      }
-     let productsRestrictionsData = []
+    //  let productsRestrictionsData = []
      
-     for(var key in answer){
-        productsRestrictionsData.push(key + ":" + answer[key])
-     }
-     return productsRestrictionsData;
+    //  for(var key in answer){
+    //     productsRestrictionsData.push(key + ":" + answer[key])
+    //  }
+     return answer;
 }
 
 exports.addToFavorite = async(req, res, next) => {
@@ -530,6 +555,7 @@ exports.getFavorites =  async(req, res, next) => {
             productIngredients = products[i].Description.replaceAll(';', ',').split(',');
             
             const answer = validateProduct(currentUser, productIngredients);
+            console.log(answer)
             let isValid = false;
             if(answer.diets.length === 0 && answer.allergens.length === 0){
                 isValid = true;
