@@ -1,6 +1,8 @@
+const PORT = process.env.PORT || 80
+
 module.exports = {
     server: {
-        port: 80,
+        port: PORT,
         jwt: {
             secret: "youdontstealmypassword",
             tokens:{
