@@ -105,7 +105,7 @@ exports.getProducts = async (req, res, next) => {
             )
             products[i]["Jpg"] = productImage.img
             console.log(products[i])
-            productIngredients = products[i].Description.replace(';', ',')
+            productIngredients = products[i].Description.replace(';', ',').split(',')
             //.replaceAll(';', ',').split(',');
             console.log(productIngredients)
             console.log(currentUser)
