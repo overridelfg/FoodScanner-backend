@@ -325,7 +325,7 @@ exports.getIsProductValid = async(req, res, next) => {
             await Product.findOne({id: product_id}).then(
                 productDetails => {
                     product = productDetails.Description;
-                    productIngredients = product.replaceAll(';', ',').split(',');
+                    productIngredients = product.replace(';', ',').split(',');
                 }
             )
         }catch(err){
