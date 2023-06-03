@@ -219,7 +219,7 @@ exports.getRestrictedProducts = async (req, res, next) => {
             ]);
 
             
-            productIngredients = product[0].Description.replaceAll(';', ',').split(',');
+            productIngredients = product[0].Description.replace(';', ',').split(',');
             const answer = isProductValid(currentUser, productIngredients)
             if(answer.length !== 0){
                 const productName = product[0].Name + product[0].Weight
@@ -278,7 +278,7 @@ exports.getProductSearch = async(req, res, next) => {
                 }
             )
             products[i]["Jpg"] = productImage.img
-            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            productIngredients = products[i].Description.replace(';', ',').split(',');
             const answer = validateProduct(currentUser, productIngredients);
             let isValid = false
             if(answer.diets.length === 0 && answer.allergens.length === 0){
@@ -556,7 +556,7 @@ exports.getFavorites =  async(req, res, next) => {
                 }
             )
             products[i]["Jpg"] = productImage.img
-            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            productIngredients = products[i].Description.replace(';', ',').split(',');
             
             const answer = validateProduct(currentUser, productIngredients);
             console.log(answer)
@@ -610,7 +610,7 @@ exports.getBarcodeHistory =  async(req, res, next) => {
         const products = currentUser.barcode_history;
         productsResponse = [];
         for(let i = 0; i < products.length; i++){
-            productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            productIngredients = products[i].Description.replace(';', ',').split(',');
             
             const answer =  validateProduct(currentUser, productIngredients);
             let isValid = false;
