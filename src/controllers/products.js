@@ -85,7 +85,6 @@ exports.getProducts = async (req, res, next) => {
             const userId = decodeToken.userId;
             await User.findOne({_id: userId}).then(
                 user => {
-                    console.log(user)
                     currentUser = user;
                 }  
             )
@@ -107,6 +106,7 @@ exports.getProducts = async (req, res, next) => {
             products[i]["Jpg"] = productImage.img
             console.log(products[i])
             productIngredients = products[i].Description.replaceAll(';', ',').split(',');
+            console.log(productIngredients)
             console.log(currentUser)
             const answer =  validateProduct(currentUser, productIngredients);
             console.log(answer)
