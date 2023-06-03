@@ -106,7 +106,6 @@ exports.getProducts = async (req, res, next) => {
             products[i]["Jpg"] = productImage.img
             console.log(products[i])
             productIngredients = products[i].Description.replace(';', ',').split(',')
-            //.replaceAll(';', ',').split(',');
             console.log(productIngredients)
             console.log(currentUser)
             const answer =  validateProduct(currentUser, productIngredients);
@@ -414,7 +413,6 @@ const isProductValid = (restriction, productIngredients) => {
     const productIngredientsList = [];
     const ingredientsSet =  new Set();
 
-    console.log('AA')
     const userDietsRestrictedIngredients = restriction.restricted_ingredients; 
     for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
         restrictedIngredients.add(userDietsRestrictedIngredients[j]);
@@ -427,7 +425,7 @@ const isProductValid = (restriction, productIngredients) => {
 
 
     for(let i = 0; i < productIngredients.length; i++){
-        const validatedProductIngredient = productIngredients[i].replaceAll(")","").replaceAll("(", "").replaceAll("-", "").replaceAll(":", "").replaceAll(";", "").replaceAll("[", "").replaceAll("]", "").replaceAll("—", "")
+        const validatedProductIngredient = productIngredients[i].replace(")","").replace("(", "").replace("-", "").replace(":", "").replace(";", "").replace("[", "").replace("]", "").replace("—", "")
         productIngredientsSet.add(validatedProductIngredient.toLowerCase().trim());
         productIngredientsList.push(validatedProductIngredient.toLowerCase().trim().split(' '));
         const productIngredient = validatedProductIngredient.split(' ');
