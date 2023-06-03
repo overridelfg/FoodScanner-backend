@@ -95,6 +95,7 @@ exports.getProducts = async (req, res, next) => {
         const products = await Product.aggregate([
             { $sample: { size: 10 } }
         ]);
+        console.log(products)
 
         for(let i = 0; i < products.length; i++){
             const productName = products[i].Name + products[i].Weight
