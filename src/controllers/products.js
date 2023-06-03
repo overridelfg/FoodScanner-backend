@@ -95,7 +95,6 @@ exports.getProducts = async (req, res, next) => {
         const products = await Product.aggregate([
             { $sample: { size: 10 } }
         ]);
-        console.log(products)
 
         for(let i = 0; i < products.length; i++){
             const productName = products[i].Name + products[i].Weight
@@ -105,9 +104,11 @@ exports.getProducts = async (req, res, next) => {
                 }
             )
             products[i]["Jpg"] = productImage.img
+            console.log(products[i])
             productIngredients = products[i].Description.replaceAll(';', ',').split(',');
             
-            const answer =  validateProduct(currentUser, productIngredients);;
+            const answer =  validateProduct(currentUser, productIngredients);
+            console.log(answer)
             let isValid = false
             if(answer.diets.length === 0 && answer.allergens.length === 0){
                 isValid = true
