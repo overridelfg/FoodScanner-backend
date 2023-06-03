@@ -105,8 +105,9 @@ exports.getProducts = async (req, res, next) => {
             )
             products[i]["Jpg"] = productImage.img
             console.log(products[i])
-            // productIngredients = products[i].Description.replaceAll(';', ',').split(',');
-            // console.log(productIngredients)
+            productIngredients = products[i].Description
+            //.replaceAll(';', ',').split(',');
+            console.log(productIngredients)
             console.log(currentUser)
             const answer =  validateProduct(currentUser, productIngredients);
             console.log(answer)
