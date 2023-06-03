@@ -120,6 +120,7 @@ exports.getProducts = async (req, res, next) => {
             })
             products[i]["isValid"] = isValid
             products[i]["isFavorite"] = isFavorite
+            console.log(products[i])
         }
         res.status(200).json(products)
         
