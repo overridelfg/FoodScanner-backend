@@ -363,6 +363,7 @@ exports.getIsProductValid = async(req, res, next) => {
 const validateProduct = (user, productIngredients) => {
     let diets = [];
     let allergens = [];
+    console.log(user)
     if(user.diets.length === 0){
         diets = [];
     }else{
