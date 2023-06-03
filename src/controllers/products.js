@@ -85,6 +85,7 @@ exports.getProducts = async (req, res, next) => {
             const userId = decodeToken.userId;
             await User.findOne({_id: userId}).then(
                 user => {
+                    console.log(user)
                     currentUser = user;
                 }  
             )
