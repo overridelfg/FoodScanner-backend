@@ -156,7 +156,7 @@ exports.getValidProducts = async (req, res) => {
             ]);
 
             
-            productIngredients = product[0].Description.replaceAll(';', ',').split(',');
+            productIngredients = product[0].Description.replace(';', ',').split(',');
                 const productName = product[0].Name + product[0].Weight
                 const productImage = await ProductImage.findOne(
                     {
