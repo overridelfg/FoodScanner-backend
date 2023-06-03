@@ -367,7 +367,7 @@ const validateProduct = (user, productIngredients) => {
         diets = [];
     }else{
         for(let i = 0; i < user.diets.length; i++){
-    
+            console.log(i)
             const answer = isProductValid(user.diets[i], productIngredients);
 
                 let productsRestrictionsDataAnswer = []
