@@ -411,7 +411,7 @@ const isProductValid = (restriction, productIngredients) => {
     const productIngredientsList = [];
     const ingredientsSet =  new Set();
 
-
+    console.log('AA')
     const userDietsRestrictedIngredients = restriction.restricted_ingredients; 
     for(let j = 0; j < userDietsRestrictedIngredients.length; j++){
         restrictedIngredients.add(userDietsRestrictedIngredients[j]);
