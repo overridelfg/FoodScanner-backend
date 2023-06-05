@@ -8,6 +8,8 @@ const math = require('mathjs')
 var stringSimilarity = require("string-similarity");
 var _ = require('lodash');
 const sklearn = import('sklearn');
+const mongoose_fuzzy_searching = require('@rowboat/mongoose-fuzzy-searching');
+
 
 
 exports.getProduct = async (req, res, next) => {
@@ -244,6 +246,7 @@ exports.getRestrictedProducts = async (req, res, next) => {
 }
 
 
+
 exports.getProductSearch = async(req, res, next) => {
     try{
         const token = req.get('Authorization').split(' ')[1];
@@ -264,11 +267,32 @@ exports.getProductSearch = async(req, res, next) => {
         }catch(err){
             console.log(err)
         }
+        const productName = req.query.name
+        console.log(productName)
+        // const products = (await Product.find(FuzzySearch(['Name', 'Description']), productName)).exec().slice(startIndex, endIndex)
 
-        const productName =  req.query.name;
-        const products = (await Product.find({Name: new RegExp('^' + productName + '.*', 'i')}).exec()).slice(startIndex, endIndex)
+        const pipeline = [
+            {
+              $search: {
+                index: "product_search",
+                text: {
+                  query: productName,
+                  path: ['Name'],
+                  fuzzy: {}
+                }
+              }
+            },
+            {
+                $skip: 10 * page
+            },
+            {
+                $limit: 10
+            },
+    
+          ]
+
+        const products = await Product.aggregate(pipeline)
         const productsResponse = []
-        console.log(products)
         for(let i = 0; i < products.length; i++){
         
             const productName = products[i].Name + products[i].Weight
@@ -315,6 +339,10 @@ exports.getProductSearch = async(req, res, next) => {
 
     }
 }
+
+function escapeRegex(text) {
+    return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  }
 
 exports.getIsProductValid = async(req, res, next) => {
     try{
