@@ -7,8 +7,6 @@ const { json } = require('body-parser')
 const math = require('mathjs')
 var stringSimilarity = require("string-similarity");
 var _ = require('lodash');
-const sklearn = import('sklearn');
-const mongoose_fuzzy_searching = require('@rowboat/mongoose-fuzzy-searching');
 
 
 
@@ -268,7 +266,6 @@ exports.getProductSearch = async(req, res, next) => {
             console.log(err)
         }
         const productName = req.query.name
-        console.log(productName)
         // const products = (await Product.find(FuzzySearch(['Name', 'Description']), productName)).exec().slice(startIndex, endIndex)
 
         const pipeline = [
@@ -288,7 +285,6 @@ exports.getProductSearch = async(req, res, next) => {
             {
                 $limit: 10
             },
-    
           ]
 
         const products = await Product.aggregate(pipeline)

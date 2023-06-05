@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const mongoosastic = require('mongoosastic')
 
 const productSchema = new Schema({
     id:{
@@ -49,7 +48,5 @@ const productSchema = new Schema({
         required: true
     },
 });
-
-productSchema.plugin(mongoosastic)
 
 module.exports = mongoose.model('Product', productSchema);
